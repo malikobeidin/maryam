@@ -1,4 +1,5 @@
 from types import IntType, LongType
+from random import randint
 Illegal = "Illegal Operation"
 
 def gcd(x, y):
@@ -157,7 +158,21 @@ class MonoidElement(object):
 
     def __eq__(self, other):
         return self.data == other.data and self.monoid == other.monoid
-    
+
+
+    def __pow__(self, n):
+        p = self.monoid.identity
+        if n == 0:
+            return p
+        elif n>0:            
+            for i in range(n):
+                p = p*self
+        else:
+            op = self.op()
+            for i in range(abs(n)):
+                p = p*op
+        return p
+             
     
     def op(self):
         return MonoidElement(self.monoid.involution(self.data), self.monoid)
@@ -165,9 +180,19 @@ class MonoidElement(object):
 
 
 StringMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)))
+
+def cat(s1, s2):
+    return s1+s2
+
+def inv(s):
+    rev =  ''.join(reversed(s))
+    return rev.swapcase()
+                        
+StringMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)))
+WordMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)).swapcase())
 IntMonoid = Monoid( 0, lambda x,y: x+y, lambda x: -x)
 PositiveIntMonoid = Monoid( 0, lambda x,y: x+y, lambda x: x)
-
+IsometryMonoid = Monoid(Isometry(0), lambda x,y: x*y, lambda x: x**(-1))
 
 
 class Pairing:
@@ -297,34 +322,29 @@ class Pairing:
             return other
         domain = other.domain
         if not trim.is_preserving():
-            isometry = trim.isometry * other.isometry
+#            print('reversing')
+            isometry = (trim.isometry**(-1)) * other.isometry
+            new_label =  other.label * (self.label**(-1))
             if domain in trim.range:
                 isometry = isometry * trim.isometry
+                new_label = self.label * new_label
                 domain = trim.isometry(domain)
         else:
             shift = trim.isometry.shift
             post = -(1 + (other.range.start - trim.range.start)/shift)
             isometry = (trim.isometry**post) * other.isometry
+            new_label = other.label * (self.label**post)
             if domain in trim.range:
                 pre = 1 + (other.domain.start - trim.range.start)/shift
                 isometry = isometry * (trim.isometry**pre)
+                new_label =   (self.label**pre) * new_label
                 domain = (trim.isometry**(-pre))(domain)
         range = isometry(domain)
         if range.start < domain.start:
+#            print('flipping')
             isometry = isometry**(-1)
+            new_label = new_label**(-1)
             domain = range
-        new_label = other.label
-        print(self)
-        print(other)
-        print(post)
-        print(pre)
-        if post:
-            for i in xrange(abs(post)):
-                new_label = self.label.op() * new_label
-        if pre:
-            for i in xrange(abs(pre)):
-                new_label = new_label * self.label
-
         return Pairing(domain, isometry, label = new_label)
             
 def Shift(domain, range, label = None):
@@ -485,29 +505,37 @@ class Pseudogroup:
         domain = (~g.isometry)(range)
         self.pairings = [Pairing(domain, g.isometry, label = g.label)] + self.pairings
 
+        
     def simplify(self):
         """
         Do one cycle of the orbit counting reduction algorithm due
         to Agol, Hass and Thurston.
         """
+#        print(len(self.pairings))
+#        print('cleaning')
         self.clean()
+#        print(len(self.pairings))
         if len(self.pairings) == 0:
             self.pairings = None
             return self.universe.width
-        print "cleaned\n", self
+#        print "cleaned\n", self
         count = self.contract()
-        print "contracted\n", self
-#        self.trim()
+#        print "contracted\n", self
+        self.trim()
 #        print "trimmed\n", self
-#        self.merge()
+        self.merge()
 #        print "merged\n", self
         self.transmit()
-        print "transmitted\n", self
+#        print "transmitted\n", self
         self.truncate()
-        print "truncated\n", self
-	print 'count = ', count
+#        print "truncated\n", self
+#	print 'count = ', count
         return count
 
+
+    def copy(self):
+        return Pseudogroup([Pairing(P.domain, P.isometry, P.label) for P in self.pairings], self.label_monoid)
+    
     def reduce(self):
         """
         Reduce the pseudogroup to nothing.  Return the number of orbits.
@@ -519,8 +547,10 @@ class Pseudogroup:
 
     def reduce_to_single_pairing(self):
         while len(self.pairings)>1:
-            self.simplify()
+            self.transmit()
+            self.truncate()
         return self.pairings[0].label
+
 
 
 
@@ -555,15 +585,18 @@ class Triangle(object):
         else:
             return (side+1)%3, self.intersection_numbers[side] - position - 1
 
-e = StringMonoid.identity
-a = MonoidElement('a',StringMonoid)
-b = MonoidElement('b',StringMonoid)
-
+e = WordMonoid.identity
+a = MonoidElement('a',WordMonoid)
+b = MonoidElement('b',WordMonoid)
+c = MonoidElement('c',WordMonoid)
+d = MonoidElement('d',WordMonoid)
 def genus_2_curve_pairings(wl, wm, wr, twl, twm, twr):
     
     t1, t2, t3 = Triangle(wl, wl, wm).transition_numbers
     t4, t5, t6 = Triangle(wm, wr, wr).transition_numbers
 
+    print('t1, t2, t2: {}, {}, {}'.format(t1,t2,t3))
+    print('t4, t5, t6: {}, {}, {}'.format(t4,t5,t6))
     #start of each interval
     s1 = 1
     e1 = wl
@@ -582,32 +615,121 @@ def genus_2_curve_pairings(wl, wm, wr, twl, twm, twr):
     
     s6 = s5+wr
     e6 = e5+wr
-
+    print('s1, s2, s3, s4, s5, s6: {}, {}, {}, {}, {}, {}'.format(s1,s2,s3, s4,s5,s6))
+    print('e1, e2, e3, e4, e5, e6: {}, {}, {}, {}, {}, {}'.format(e1,e2,e3, e4,e5,e6))
     pairings = []
     
     pairings.append(Flip([s1,s1+t1-1],[s3+t3,e3],e))
+#    print(pairings)
+    
     pairings.append(Flip([s2+t2,e2],[s3,s3+t3-1],e))
+#    print(pairings)
+    
     if t2>0:        
         pairings.append(Flip([s1+t1,e1],[s2,s2+t2-1],e))
-        
+#    print(pairings)
+    
     pairings.append(Flip([s4,s4+t4-1],[s6+t6,e6],e))
-    pairings.append(Flip([s5+t5,e5],[s6,s6+t6-1],e))
-    if t5>0:        
-        pairings.append(Flip([s4+t4,e4],[s5,s5+t5-1],e))
+#    print(pairings)
 
+    if t6>0:
+        pairings.append(Flip([s5+t5,e5],[s6,s6+t6-1],e))
+#    print(pairings)
+    
+    pairings.append(Flip([s4+t4,e4],[s5,s5+t5-1],e))
+#    print(pairings)
+    
     pairings.append(Flip([s1, e1-twl],[s2,e2-twl],a))
+#    print(pairings)
+    
     if twl>0:
         pairings.append(Flip([e1-twl+1, e1],[e2-twl+1,e2],a))
+#    print(pairings)
 
     pairings.append(Flip([s3, e3-twm],[s4,e4-twm],e))
+#    print(pairings)
     if twm>0:
         pairings.append(Flip([e3-twm+1, e3],[e4-twm+1,e4],e))
+#    print(pairings)
 
     pairings.append(Flip([s5, e5-twr],[s6,e6-twr],b))
+#    print(pairings)
     if twr>0:
         pairings.append(Flip([e5-twr+1, e5],[e6-twr+1,e6],b))
-
+#    print(pairings)
         
     return pairings
 
 #H = Pseudogroup([ Flip([11,16],[13,18], a), Shift([1,4],[3,6], b), Shift([10,14],[14,18], c), Shift([8,10],[14,16], d), Flip([6,7],[8,9], e) ], StringMonoid, Interval(1,18))
+
+def test_transmit():
+    P1 = Flip([1,5],[11,15], a*b)
+    P2 = Flip([7,9],[12,14], c*d)
+    P1tP2 = P1.transmit(P2)
+    P2tP1 = P2.transmit(P1)
+    print(P1tP2)
+    print(P2tP1)
+
+
+def test_transmit2():
+    P1 = Flip([1,5],[11,15])
+    P2 = Flip([7,9],[12,14])
+    P1i = MonoidElement(P1.isometry, IsometryMonoid)
+    P2i = MonoidElement(P2.isometry, IsometryMonoid)
+    P1 = Flip([1,5],[11,15], P1i)
+    P2 = Flip([7,9],[12,14], P2i)
+    
+    P1tP2 = P1.transmit(P2)
+    P2tP1 = P2.transmit(P1)
+    return P1tP2, P2tP1
+    print(P1tP2)
+    print(P2tP1)
+
+
+                
+def random_curve(n):
+    while True:
+        alpha = randint(1,n-1)
+        #    beta = randint(1,n)
+        beta = randint(1,n-1)
+        gamma = randint(1, min(2*alpha,2*beta)/2)*2
+        alpha_twist = randint(0,alpha-1)
+        beta_twist = randint(0,beta-1)
+        gamma_twist = randint(0, gamma-1)
+        G = Pseudogroup(genus_2_curve_pairings(alpha,gamma,beta,alpha_twist,gamma_twist,beta_twist),WordMonoid)
+        if G.reduce() == 1:
+            print(alpha, gamma, beta, alpha_twist, gamma_twist, beta_twist)
+            G = Pseudogroup(genus_2_curve_pairings(alpha,gamma,beta,alpha_twist,gamma_twist,beta_twist),WordMonoid)
+            print(G)
+            return G
+
+
+def relator_walk(relator):
+    x,y = (0,0)
+    walk = [(x,y)]
+    for letter in relator:
+        if letter == 'a':
+            x,y = x+1,y
+        if letter == 'A':
+            x,y = x-1,y
+        if letter == 'b':
+            x,y = x,y+1
+        if letter == 'B':
+            x,y = x,y-1
+        walk.append((x,y))
+    return walk
+
+def draw_relator_walk(filename, relator):
+    import matplotlib.pyplot as plt
+    plt.clf()
+    fig, ax = plt.subplots()
+#        fig.patch.set_visible(False)
+    ax.axis('off')
+    walk = relator_walk(relator)
+    for i in range(len(walk)-1):
+        x1, y1 = walk[i]
+        x2, y2 = walk[i+1]
+        ax.plot([x1,x2],[y1,y2], c='black')
+    ax.set_axis_bgcolor('white')
+    with open(filename,'w') as outfile:
+        fig.canvas.print_png(outfile)

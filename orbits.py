@@ -1,5 +1,5 @@
 from types import IntType, LongType
-
+from monoids import *
 Illegal = "Illegal Operation"
 
 def gcd(x, y):
@@ -135,65 +135,6 @@ class Isometry:
             return Interval(self(x.start), self(x.end))
 
 
-class Monoid(object):
-    def __init__(self, identity, product_map, involution):
-        self.product_map = product_map
-        self.involution = involution
-        self.identity = MonoidElement(identity, self)
-
-class MonoidElement(object):
-    def __init__(self, data, monoid):
-        self.data = data
-        self.monoid = monoid
-
-    def __mul__(self, other):
-        if self.monoid != other.monoid:
-            raise TypeError("Elements are not in the same monoid")
-        else:
-            new_data = self.monoid.product_map(self.data, other.data)
-            return MonoidElement(new_data, self.monoid)
-
-    def __repr__(self):
-        return str(self.data)
-
-    def __eq__(self, other):
-        return self.data == other.data and self.monoid == other.monoid
-
-
-    def __pow__(self, n):
-        p = self.monoid.identity
-        if n == 0:
-            return p
-        elif n>0:            
-            for i in range(n):
-                p = p*self
-        else:
-            op = self.op()
-            for i in range(abs(n)):
-                p = p*op
-        return p
-             
-    
-    def op(self):
-        return MonoidElement(self.monoid.involution(self.data), self.monoid)
-
-
-
-StringMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)))
-
-                        
-StringMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)))
-WordMonoid = Monoid( '' , lambda x,y: x+y, lambda t: ''.join(reversed(t)).swapcase())
-IntMonoid = Monoid( 0, lambda x,y: x+y, lambda x: -x)
-PositiveIntMonoid = Monoid( 0, lambda x,y: x+y, lambda x: x)
-IsometryMonoid = Monoid(Isometry(0), lambda x,y: x*y, lambda x: x**(-1))
-
-def sum(x,y):
-    return (x[0]+y[0], x[1]+y[1])
-
-def flip(x):
-    return (-x[0], -x[1])
-Z2Monoid = Monoid((0,0), sum, flip)
 
 class Pairing:
     """
@@ -552,6 +493,28 @@ class Pseudogroup:
         return self.pairings[0].label
 
 
+    def reducible_to_marked_labels(self):
+        while len(self.pairings)>1:
+#            print('pairings')
+#            print(self.pairings)
+            self.transmit()
+            self.truncate()
+            all_tops_marked = True
+            all_bottoms_marked = True
+            for pairing in self.pairings:
+#                print(pairing)
+#                print('top marked: '+str(pairing.label.top_marked()))
+#                print('bottom marked: '+str(pairing.label.bottom_marked()))
+                if not pairing.label.top_marked():
+                    all_tops_marked = False
+                if not pairing.label.bottom_marked():
+                    all_bottoms_marked = False
+                if not all_tops_marked and not all_bottoms_marked:
+                    break
+            if all_tops_marked or all_bottoms_marked:
+                return False
+        return True
+        
 
 
 class Triangle(object):
@@ -585,15 +548,6 @@ class Triangle(object):
         else:
             return (side+1)%3, self.intersection_numbers[side] - position - 1
 
-e = WordMonoid.identity
-a = MonoidElement('a',WordMonoid)
-b = MonoidElement('b',WordMonoid)
-c = MonoidElement('c',WordMonoid)
-d = MonoidElement('d',WordMonoid)
-
-eh = Z2Monoid.identity
-ah = MonoidElement((1,0),Z2Monoid)
-bh = MonoidElement((0,1),Z2Monoid)
 def genus_2_curve_pairings(wl, wm, wr, twl, twm, twr, e, a, b):
     
     t1, t2, t3 = Triangle(wl, wl, wm).transition_numbers
@@ -663,5 +617,31 @@ def genus_2_curve_pairings(wl, wm, wr, twl, twm, twr, e, a, b):
 
         
     return pairings
+
+def genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, e, a, b, Monoid):
+    return Pseudogroup(genus_2_curve_pairings(wl, wm, wr, twl, twm, twr, e, a, b), Monoid)
+
+
+def relator(wl, wm, wr, twl, twm, twr):
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, e, a, b, WordMonoid).reduce_to_single_pairing().data
+
+def homology(wl, wm, wr, twl, twm, twr):
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, eh, ah, bh, Z2Monoid).reduce_to_single_pairing().data
+
+def fibers(wl, wm, wr, twl, twm, twr):
+    x, y = homology(wl, wm, wr, twl, twm, twr)
+    if x != 0:
+        box_a = MarkedMonoidElement((x,x,0,1,1),BoxMonoid)
+    else:
+        box_a = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
+    if y != 0:
+        box_b = MarkedMonoidElement((y,y,0,1,1),BoxMonoid)
+    else:
+        box_b = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
+
+    box_id = BoxMonoid.identity
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, BoxMonoid).reducible_to_marked_labels()
+
+
 
 #H = Pseudogroup([ Flip([11,16],[13,18], a), Shift([1,4],[3,6], b), Shift([10,14],[14,18], c), Shift([8,10],[14,16], d), Flip([6,7],[8,9], e) ], StringMonoid, Interval(1,18))

@@ -1,4 +1,6 @@
 from orbits import *
+from monoids import *
+from freegroup import *
 from random import randint
 
 def test_transmit():
@@ -26,7 +28,8 @@ def test_transmit2():
 
 
                 
-def random_curve(n,e,a,b):
+def random_curve(n):
+    zero  = TrivialMonoid.identity
     while True:
         alpha = randint(1,n-1)
         #    beta = randint(1,n)
@@ -35,10 +38,9 @@ def random_curve(n,e,a,b):
         alpha_twist = randint(0,alpha-1)
         beta_twist = randint(0,beta-1)
         gamma_twist = randint(0, gamma-1)
-        G = Pseudogroup(genus_2_curve_pairings(alpha,gamma,beta,alpha_twist,gamma_twist,beta_twist,e,a,b),WordMonoid)
-        Gc = G.copy()
-        if Gc.reduce() == 1:
-            return G
+        G = Pseudogroup(genus_2_curve_pairings(alpha,gamma,beta,alpha_twist,gamma_twist,beta_twist,zero,zero,zero),TrivialMonoid)
+        if G.reduce() == 1:
+            return (alpha,gamma,beta,alpha_twist,gamma_twist,beta_twist)
 
 
 def relator_walk(relator):
@@ -74,4 +76,45 @@ def draw_relator_walk(filename, relator):
         fig.canvas.print_png(outfile)
 
 def random_homology_stats(sizes, num_samples_per_size):
-    return [[random_curve(size, eh, ah, bh).reduce_to_single_pairing().data for i in range(num_samples_per_size)] for size in sizes]
+    return [[random_curve(size, eh, ah, bh)[0].reduce_to_single_pairing().data for i in range(num_samples_per_size)] for size in sizes]
+
+
+def monic_alexander_polynomial_vs_fibers(size, num_samples, e, a, b, F):
+    monic_alex_vs_fibers = []
+    for i in range(num_samples):
+        G, dt_coords = random_curve(size,e,a,b)
+        R = snappy_string_to_relator(G.reduce_to_single_pairing().data, F)
+        try:
+            ma = monic_alexander_polynomial(R,F)
+            fi = fibers(R,F)
+            monic_alex_vs_fibers.append( (ma, fi, dt_coords, R ) )
+            if ma and not fi:
+                print(dt_coords, R)
+            
+        except:
+            continue
+    return monic_alex_vs_fibers
+
+def monic_alexander_polynomial_but_does_not_fiber(size, num_samples, e, a, b, F):
+
+    exceptional_count = 0
+    total_count = 0
+    for i in range(num_samples):
+        G, dt_coords = random_curve(size,e,a,b)
+        R = snappy_string_to_relator(G.reduce_to_single_pairing().data, F)
+        try:
+            ma = monic_alexander_polynomial(R,F)
+            fi = fibers(R,F)
+
+            if ma and not fi:
+                exceptional_count += 1
+            total_count += 1
+            
+        except:
+            continue
+    return exceptional_count, total_count
+
+def fibering_probability(size, num_samples):
+    return float(sum(fibers(*random_curve(size))for i in range(num_samples)))/num_samples
+
+    

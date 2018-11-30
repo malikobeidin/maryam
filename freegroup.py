@@ -100,6 +100,65 @@ def alexander_polynomial(R, F):
             poly -= t**height
     return poly
 
+
+
+
+def ut_walk_just_a(R, F):
+    a, b = F.gens()
+    S = R.syllables()
+    h_a = 0
+    h_b = 0
+    for s in S:
+        if s[0] == a:
+           h_a += s[1] 
+        if s[0] == b:
+           h_b += s[1]
+    new_a, new_b = change_coordinates(-h_b,h_a)
+
+    Rsub = new_a
+#    print(Rsub)
+    height = 0
+    heights = [0]
+
+    for i in Rsub.Tietze():
+        if i in (-1,1):
+            height += i
+        heights.append(height)
+
+    return heights
+
+
+
+def u_heights(R, F):
+    a, b = F.gens()
+    S = R.syllables()
+    h_a = 0
+    h_b = 0
+    for s in S:
+        if s[0] == a:
+           h_a += s[1] 
+        if s[0] == b:
+           h_b += s[1]
+    new_a, new_b = change_coordinates(-h_b,h_a)
+
+    Rsub = R.subs(a=new_a, b=new_b)
+    height = 0
+    heights = []
+
+    for i in Rsub.Tietze():
+        if i in (-1,1):
+            height += i
+        else:
+            if i>0:
+                heights.append((height, 1))
+            elif i<0:
+                heights.append((height,-1))
+            else:
+                raise Exception()
+
+    return heights
+
+
 def ut_walk(R, F):
     a, b = F.gens()
     S = R.syllables()
@@ -124,11 +183,47 @@ def ut_walk(R, F):
 
     return heights
 
+
+def ut_walk_with_orientations(R, F):
+    a, b = F.gens()
+    S = R.syllables()
+    h_a = 0
+    h_b = 0
+    for s in S:
+        if s[0] == a:
+           h_a += s[1] 
+        if s[0] == b:
+           h_b += s[1]
+    new_a, new_b = change_coordinates(-h_b,h_a)
+
+    Rsub = R.subs(a=new_a, b=new_b)
+    return Rsub.Tietze()
+
+
 def plot_walk(walk, filename):
     import matplotlib.pyplot as plt
     plt.clf()
     plt.plot(range(len(walk)), walk)
-    plt.savefig(filename+'.pdf')
+    plt.savefig(filename+'.png')
+
+def plot_walk_with_orientations(tietze, filename):
+    import matplotlib.pyplot as plt
+    plt.clf()
+    height = 0
+    for i, step_type in enumerate(tietze):
+        if step_type == 1:
+            plt.plot((i, i+1), (height,height+1), color='black')
+            height += 1
+        elif step_type == -1:
+            plt.plot((i, i+1), (height,height-1), color='black')
+            height -= 1
+        elif step_type == 2:
+            plt.plot((i, i+1), (height,height),color = 'blue')
+        elif step_type == -2:
+            plt.plot((i, i+1), (height,height), color= 'red')
+        else:
+            raise Exception("Step type messed up.")            
+    plt.savefig(filename+'.png')
 
 
 def unique_max_and_min(walk):
@@ -143,6 +238,7 @@ def unique_max_and_min(walk):
         elif height == next_height == min_height:
             min_count += 1
     return (max_count < 2) and (min_count < 2)
+
 
 def relator_fibers(R, F):
     return unique_max_and_min(ut_walk(R,F))

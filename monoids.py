@@ -160,3 +160,78 @@ def bottom_marked(box):
     return box[4]>2
     
 BoxMonoid = MarkedMonoid((0,0,0,0,0), box_product, box_reverse, top_marked, bottom_marked)
+
+
+def box_product(box1, box2):
+    s1, t1, b1, maxes1, mins1 = box1
+    s2, t2, b2, maxes2, mins2 = box2
+    s_new = s1+s2
+    
+    if t1>s1+t2:
+        t_new = t1
+        nt_new = nt1
+    elif t1<s1+t2:
+        t_new = s1+t2
+        nt_new = nt2
+    else:
+        t_new = t1
+        nt_new = nt1+nt2
+
+    if b1<s1+b2:
+        b_new = b1
+        nb_new = nb1
+    elif b1>s1+b2:
+        b_new = s1+b2
+        nb_new = nb2
+    else:
+        b_new = b1
+        nb_new = nb1+nb2
+
+    return (s_new, t_new, b_new, nt_new, nb_new)
+
+
+def signed_box_product(box1, box2):
+    s1, t1, b1, ntp1, ntn1, nbp1, nbn1 = box1
+    s2, t2, b2, ntp2, ntn2, nbp2, nbn2 = box2
+
+    s_new = s1+s2
+    
+    if t1>s1+t2:
+        t_new = t1
+        ntp_new = ntp1
+        ntn_new = ntn1
+    elif t1<s1+t2:
+        t_new = s1+t2
+        ntp_new = ntp2
+        ntn_new = ntn2
+    else:
+        t_new = t1
+        ntp_new = ntp1+ntp2
+        ntn_new = ntn1+ntn2
+
+    if b1<s1+b2:
+        b_new = b1
+        nbp_new = nbp1
+        nbn_new = nbn1
+    elif b1>s1+b2:
+        b_new = s1+b2
+        nbp_new = nbp2
+        nbn_new = nbn2
+    else:
+        b_new = b1
+        nbp_new = nbp1+nbp2
+        nbn_new = nbn1+nbn2
+
+    return (s_new, t_new, b_new, ntp_new, ntn_new, nbp_new, nbn_new)
+
+def signed_box_reverse(box):
+    s, t, b, ntp, ntn, nbp, nbn = box
+    return (-s,t-s,b-s, ntn, ntp, nbn, nbp)
+
+def signed_top_marked(box):
+    return box[3]-box[4] == 0
+    
+def signed_bottom_marked(box):
+    return box[5]-box[6] == 0
+    
+SignedBoxMonoid = MarkedMonoid((0,0,0,0,0,0,0), signed_box_product, signed_box_reverse, signed_top_marked, signed_bottom_marked)

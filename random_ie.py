@@ -117,4 +117,43 @@ def monic_alexander_polynomial_but_does_not_fiber(size, num_samples, e, a, b, F)
 def fibering_probability(size, num_samples):
     return float(sum(fibers(*random_curve(size))for i in range(num_samples)))/num_samples
 
-    
+
+def fibering_and_alex_top_coeff_counts(size, num_samples):
+    num_fiber = 0
+    num_alex_top_coeff_cancels = 0
+    num_phi_is_zero = 0
+    for i in range(num_samples):
+#        print('{}/{}'.format(i,num_samples))
+        c = random_curve(size)
+        try:
+            if fibers(*c):
+                num_fiber += 1
+            if alexander_poly_top_coeff_cancels(*c):
+                num_alex_top_coeff_cancels += 1
+        except:
+            num_phi_is_zero += 1
+    return  num_fiber, num_alex_top_coeff_cancels , num_phi_is_zero
+
+def fibering_and_alex(sizes, num_samples, filename):
+    with open(filename+'.txt', 'w') as f:
+        f.write('samples per size: {}'.format(num_samples))
+        for i, size in enumerate(sizes):
+            print(i, len(sizes))
+            fi, c, z = fibering_and_alex_top_coeff_counts(size, num_samples)
+            f.write('{},{},{},{}\n'.format(size,fi,c,z))
+
+            
+        
+
+def fibering_and_signed_fibering_boxes(size, num_samples):
+    fibering_boxes = []
+    signed_fibering_boxes = []
+    for i in range(num_samples):
+        print('{}/{}'.format(i,num_samples))
+        c = random_curve(size)
+        try:
+            fibering_boxes.append(fibering_box(*c).data)
+            signed_fibering_boxes.append(signed_fibering_box(*c).data)
+        except:
+            continue
+    return  fibering_boxes, signed_fibering_boxes

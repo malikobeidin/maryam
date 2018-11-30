@@ -512,8 +512,9 @@ class Pseudogroup:
                 if not all_tops_marked and not all_bottoms_marked:
                     break
             if all_tops_marked or all_bottoms_marked:
-                return False
-        return True
+                return True
+        final_pairing = self.pairings[0]
+        return final_pairing.label.top_marked() or final_pairing.label.bottom_marked()
         
 
 
@@ -628,20 +629,108 @@ def relator(wl, wm, wr, twl, twm, twr):
 def homology(wl, wm, wr, twl, twm, twr):
     return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, eh, ah, bh, Z2Monoid).reduce_to_single_pairing().data
 
+
+
 def fibers(wl, wm, wr, twl, twm, twr):
     x, y = homology(wl, wm, wr, twl, twm, twr)
-    if x != 0:
-        box_a = MarkedMonoidElement((x,x,0,1,1),BoxMonoid)
+    phi_a, phi_b = -y, x
+    if phi_a == 0 or phi_b == 0:
+        if phi_a == 0 and phi_b == 0:
+            raise Exception("phi is zero")
+        if phi_a == 0:
+            box_a = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
+            box_b = MarkedMonoidElement((1,1,0,0,0),BoxMonoid)        
+        if phi_b == 0:
+            box_a = MarkedMonoidElement((1,1,0,0,0),BoxMonoid)
+            box_b = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)        
     else:
-        box_a = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
-    if y != 0:
-        box_b = MarkedMonoidElement((y,y,0,1,1),BoxMonoid)
-    else:
-        box_b = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
-
+        if phi_a > 0:
+            box_a = MarkedMonoidElement((phi_a,phi_a,0,1,1),BoxMonoid)
+        if phi_a < 0:
+            box_a = MarkedMonoidElement((phi_a,0,phi_a,1,1),BoxMonoid)
+        if phi_b > 0:
+            box_b = MarkedMonoidElement((phi_b,phi_b,0,1,1),BoxMonoid)
+        if phi_b < 0:
+            box_b = MarkedMonoidElement((phi_b,0,phi_b,1,1),BoxMonoid)
     box_id = BoxMonoid.identity
-    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, BoxMonoid).reducible_to_marked_labels()
+    return not genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, BoxMonoid).reducible_to_marked_labels()
 
+def fibering_box(wl, wm, wr, twl, twm, twr):
+    x, y = homology(wl, wm, wr, twl, twm, twr)
+    phi_a, phi_b = -y, x
+    if phi_a == 0 or phi_b == 0:
+        if phi_a == 0 and phi_b == 0:
+            raise Exception("phi is zero")
+        if phi_a == 0:
+            box_a = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)
+            box_b = MarkedMonoidElement((1,1,0,0,0),BoxMonoid)        
+        if phi_b == 0:
+            box_a = MarkedMonoidElement((1,1,0,0,0),BoxMonoid)
+            box_b = MarkedMonoidElement((0,0,0,2,2),BoxMonoid)        
+    else:
+        if phi_a > 0:
+            box_a = MarkedMonoidElement((phi_a,phi_a,0,1,1),BoxMonoid)
+        if phi_a < 0:
+            box_a = MarkedMonoidElement((phi_a,0,phi_a,1,1),BoxMonoid)
+        if phi_b > 0:
+            box_b = MarkedMonoidElement((phi_b,phi_b,0,1,1),BoxMonoid)
+        if phi_b < 0:
+            box_b = MarkedMonoidElement((phi_b,0,phi_b,1,1),BoxMonoid)
+#    print(box_a)
+#    print(box_b)
+    box_id = BoxMonoid.identity
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, BoxMonoid).reduce_to_single_pairing()
+
+
+
+def alexander_poly_top_coeff_cancels(wl, wm, wr, twl, twm, twr):
+    x, y = homology(wl, wm, wr, twl, twm, twr)
+    phi_a, phi_b = -y, x
+    if phi_a == 0 or phi_b == 0:
+        if phi_a == 0 and phi_b == 0:
+            raise Exception("phi is zero")
+        if phi_a == 0:
+            box_a = MarkedMonoidElement((0,0,0,2,0,2,0),SignedBoxMonoid)
+            box_b = MarkedMonoidElement((1,1,0,0,0,0,0),SignedBoxMonoid)        
+        if phi_b == 0:
+            box_a = MarkedMonoidElement((1,1,0,0,0,0,0),SignedBoxMonoid)
+            box_b = MarkedMonoidElement((0,0,0,0,2,0,2),SignedBoxMonoid)        
+    else:
+        if phi_a > 0:
+            box_a = MarkedMonoidElement((phi_a,phi_a,0,1,0,0,1),SignedBoxMonoid)
+        if phi_a < 0:
+            box_a = MarkedMonoidElement((phi_a,0,phi_a,0,1,1,0),SignedBoxMonoid)
+        if phi_b > 0:
+            box_b = MarkedMonoidElement((phi_b,phi_b,0,0,1,1,0),SignedBoxMonoid)
+        if phi_b < 0:
+            box_b = MarkedMonoidElement((phi_b,0,phi_b,1,0,0,1),SignedBoxMonoid)
+    box_id = SignedBoxMonoid.identity
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, SignedBoxMonoid).reducible_to_marked_labels()
+
+
+def signed_fibering_box(wl, wm, wr, twl, twm, twr):
+    x, y = homology(wl, wm, wr, twl, twm, twr)
+    phi_a, phi_b = -y, x
+    if phi_a == 0 or phi_b == 0:
+        if phi_a == 0 and phi_b == 0:
+            raise Exception("phi is zero")
+        if phi_a == 0:
+            box_a = MarkedMonoidElement((0,0,0,2,0,2,0),SignedBoxMonoid)
+            box_b = MarkedMonoidElement((1,1,0,0,0,0,0),SignedBoxMonoid)        
+        if phi_b == 0:
+            box_a = MarkedMonoidElement((1,1,0,0,0,0,0),SignedBoxMonoid)
+            box_b = MarkedMonoidElement((0,0,0,0,2,0,2),SignedBoxMonoid)        
+    else:
+        if phi_a > 0:
+            box_a = MarkedMonoidElement((phi_a,phi_a,0,1,0,0,1),SignedBoxMonoid)
+        if phi_a < 0:
+            box_a = MarkedMonoidElement((phi_a,0,phi_a,0,1,1,0),SignedBoxMonoid)
+        if phi_b > 0:
+            box_b = MarkedMonoidElement((phi_b,phi_b,0,0,1,1,0),SignedBoxMonoid)
+        if phi_b < 0:
+            box_b = MarkedMonoidElement((phi_b,0,phi_b,1,0,0,1),SignedBoxMonoid)
+    box_id = SignedBoxMonoid.identity
+    return genus_2_pseudogroup(wl, wm, wr, twl, twm, twr, box_id, box_a, box_b, SignedBoxMonoid).reduce_to_single_pairing()
 
 
 #H = Pseudogroup([ Flip([11,16],[13,18], a), Shift([1,4],[3,6], b), Shift([10,14],[14,18], c), Shift([8,10],[14,16], d), Flip([6,7],[8,9], e) ], StringMonoid, Interval(1,18))

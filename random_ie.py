@@ -157,3 +157,65 @@ def fibering_and_signed_fibering_boxes(size, num_samples):
         except:
             continue
     return  fibering_boxes, signed_fibering_boxes
+
+
+
+def time_to_marking_fibering(C):
+    try:
+        box, labels, tops, bottoms = fibering_box(*C, show_labels= True)
+    except:
+        return
+    if box.top_marked():
+        time_to_marked_top = len(tops)
+        time_to_marked_bottom = len(bottoms)
+        for j, l in enumerate(tops):
+            if not (0 in l):
+                time_to_marked_top = j
+                break
+        for j, l in enumerate(bottoms):
+            if not (0 in l):
+                time_to_marked_bottom = j
+                break
+        return (time_to_marked_top, len(tops)), (time_to_marked_bottom, len(bottoms))
+
+
+def time_to_marking(C):
+    try:
+        box, labels, tops, bottoms = signed_fibering_box(*C, show_labels= True)
+    except:
+        return
+    if box.top_marked():
+        time_to_marked_top = len(tops)
+        time_to_marked_bottom = len(bottoms)
+        for j, l in enumerate(tops):
+            if not (0 in l):
+                time_to_marked_top = j
+                break
+        for j, l in enumerate(bottoms):
+            if not (0 in l):
+                time_to_marked_bottom = j
+                break
+        return (time_to_marked_top, len(tops)), (time_to_marked_bottom, len(bottoms))
+        
+                
+
+def marking_time_fibering_stats(size, num_samples):
+    marking_times = []
+    for i in range(num_samples):
+        print('{}/{}'.format(i,num_samples))
+        c = time_to_marking_fibering(random_curve(size)) 
+        if c:
+            marking_times.append(c)
+    return marking_times
+
+    
+def marking_time_stats(size, num_samples):
+    marking_times = []
+    for i in range(num_samples):
+        print('{}/{}'.format(i,num_samples))
+        c = time_to_marking(random_curve(size)) 
+        if c:
+            marking_times.append(c)
+    return marking_times
+            
+        
